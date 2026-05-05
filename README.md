@@ -1,17 +1,17 @@
 # One Horizon webhooks on Vercel
 
-Clone this when your One Horizon app needs a webhook endpoint on Vercel. It is only the Vercel version: one serverless function, one shared handler, no other host config.
+Vercel version of the One Horizon webhook starter. One function, the webhook code, and nothing from the other hosts.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/onehorizonai/webhook-template-vercel&env=ONE_WEBHOOK_KEY,ONE_API_KEY&envDescription=Paste%20ONE_WEBHOOK_KEY%20from%20your%20One%20Horizon%20webhook%20settings.%20ONE_API_KEY%20is%20optional%20and%20only%20needed%20for%20SDK%20follow-up%20calls.)
 
-## What is inside
+## Files to look at
 
 - `api/webhook.ts`: the Vercel Function
-- `src/webhook.ts`: key check, JSON parsing, event validation, idempotency hook
+- `src/webhook.ts`: key check, JSON parsing, event validation, idempotency
 - `sample-payloads/`: example One Horizon events
-- `src/sdk.ts`: optional follow-up API calls
+- `src/sdk.ts`: optional API calls after receiving an event
 
-The endpoint accepts `HEAD`, `GET`, and JSON `POST` requests at `/webhook`.
+Vercel rewrites `/webhook` to `api/webhook.ts`. The function accepts `HEAD`, `GET`, and JSON `POST`.
 
 ## Run it locally
 
@@ -31,17 +31,18 @@ curl http://localhost:3000/webhook \
   --data @sample-payloads/task-created.json
 ```
 
-## Connect One Horizon
+## Connect it to One Horizon
 
 1. Deploy this repo to Vercel.
-2. Add `ONE_WEBHOOK_KEY` in Vercel.
+2. Set `ONE_WEBHOOK_KEY` in Vercel.
 3. In One Horizon, open **Settings -> Apps**.
 4. Add the deployed `/webhook` URL.
-5. Pick events and click **Verify**.
+5. Pick the events you want.
+6. Click **Verify**.
 
-## Before you ship
+## Replace before real use
 
-The in-memory event store is for the template. Replace it with Redis, Postgres, or another durable store before doing side effects. Keep the response fast; One Horizon waits 3 seconds before timing out.
+The event store is just memory. Before this does anything real, save processed event IDs in Redis, Postgres, or another durable store. Keep the handler quick; One Horizon times out after 3 seconds.
 
 ## Checks
 
