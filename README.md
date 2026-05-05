@@ -1,20 +1,20 @@
-# One Horizon Webhook Template for Vercel
+# One Horizon webhook template for Vercel
 
-A minimal TypeScript webhook receiver for One Horizon apps on Vercel.
+Use this repo if you want a One Horizon webhook receiver on Vercel. No Netlify, Heroku, or Cloudflare files.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/onehorizonai/webhook-template-vercel&env=ONE_WEBHOOK_KEY,ONE_API_KEY&envDescription=Paste%20ONE_WEBHOOK_KEY%20from%20your%20One%20Horizon%20webhook%20settings.%20ONE_API_KEY%20is%20optional%20and%20only%20needed%20for%20SDK%20follow-up%20calls.)
 
-## What You Get
+## Included
 
-- Vercel function at `api/webhook.ts`
+- Vercel Function at `api/webhook.ts`
 - `/webhook` endpoint
-- Webhook key verification
-- JSON validation and 256 KB body limit
-- Retry-safe event ID handling
+- webhook key checks
+- JSON validation with a 256 KB limit
+- retry-safe event ID handling
 - Sample payloads
-- Optional SDK helper in `src/sdk.ts`
+- optional SDK helper in `src/sdk.ts`
 
-## Run Locally
+## Run locally
 
 ```bash
 yarn install
@@ -39,11 +39,11 @@ curl http://localhost:3000/webhook \
 3. Choose events.
 4. Click **Verify**.
 
-## Production Notes
+## Before production
 
 - Keep `ONE_WEBHOOK_KEY` secret.
 - Return `2xx` quickly.
-- Store processed event IDs in Redis, Postgres, or another durable store before doing side effects.
+- Store event IDs in Redis, Postgres, or another durable store before doing side effects.
 - Queue slow work. One Horizon delivery requests time out after 3 seconds.
 
 ## Checks
