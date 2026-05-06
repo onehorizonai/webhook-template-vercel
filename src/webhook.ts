@@ -110,6 +110,10 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
 
 function parseBody(request: WebhookRequest): { ok: true; value: unknown } | { ok: false; status: number; error: string } {
   if (request.body !== undefined) {
+    if (isRawBody(request.body)) {
+      return parseRawBody(request.body)
+    }
+
     const estimatedBytes = byteLength(JSON.stringify(request.body))
     if (estimatedBytes > MAX_WEBHOOK_BODY_BYTES) {
       return { ok: false, status: 413, error: 'webhook payload is too large' }
@@ -122,6 +126,14 @@ function parseBody(request: WebhookRequest): { ok: true; value: unknown } | { ok
     return { ok: false, status: 400, error: 'webhook payload is required' }
   }
 
+  if (byteLength(raw) > MAX_WEBHOOK_BODY_BYTES) {
+    return { ok: false, status: 413, error: 'webhook payload is too large' }
+  }
+
+  return parseRawBody(raw)
+}
+
+function parseRawBody(raw: RawWebhookBody): { ok: true; value: unknown } | { ok: false; status: number; error: string } {
   if (byteLength(raw) > MAX_WEBHOOK_BODY_BYTES) {
     return { ok: false, status: 413, error: 'webhook payload is too large' }
   }
@@ -166,6 +178,10 @@ function parseWebhookEvent(value: unknown): { ok: true; event: OneHorizonWebhook
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isRawBody(value: unknown): value is RawWebhookBody {
+  return typeof value === 'string' || value instanceof ArrayBuffer || value instanceof Uint8Array
 }
 
 function byteLength(value: RawWebhookBody | string): number {

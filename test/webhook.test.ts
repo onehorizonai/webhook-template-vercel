@@ -73,6 +73,23 @@ describe('handleWebhook', () => {
     })
   })
 
+  it('accepts Vercel dev string bodies', async () => {
+    const response = await handleWebhook({
+      method: 'POST',
+      headers: cloudEventsHeaders,
+      body: JSON.stringify({ ...payload, type: 'task.updated' }),
+      env: {},
+      eventStore: createMemoryEventStore(),
+      log
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      ok: true,
+      type: 'task.updated'
+    })
+  })
+
   it('rejects invalid verification keys when configured', async () => {
     const response = await handleWebhook({
       method: 'POST',
