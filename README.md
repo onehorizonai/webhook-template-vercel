@@ -7,11 +7,11 @@ Vercel version of the One Horizon webhook starter. One function, the webhook cod
 ## Files to look at
 
 - `api/webhook.ts`: the Vercel Function
-- `src/webhook.ts`: key check, JSON parsing, event validation, idempotency
+- `src/webhook.ts`: key check, CloudEvents JSON parsing, event validation, idempotency
 - `sample-payloads/`: example One Horizon events
 - `src/sdk.ts`: optional API calls after receiving an event
 
-Vercel rewrites `/webhook` to `api/webhook.ts`. The function accepts `HEAD`, `GET`, and JSON `POST`.
+Vercel rewrites `/webhook` to `api/webhook.ts`. The function accepts `HEAD`, `GET`, and CloudEvents JSON `POST`.
 
 ## One Horizon links
 
@@ -35,7 +35,7 @@ yarn dev
 ```bash
 curl http://localhost:3000/webhook \
   -X POST \
-  -H "content-type: application/json" \
+  -H "content-type: application/cloudevents+json; charset=utf-8" \
   -H "x-one-webhook-key: paste-one-horizon-webhook-key-here" \
   -H "x-one-event-id: evt_task_created" \
   -H "x-one-event-type: task.created" \

@@ -1,4 +1,4 @@
-import { emptyResponse, hasJsonContentType, jsonResponse, MAX_WEBHOOK_BODY_BYTES, readHeader } from './http.js'
+import { emptyResponse, hasCloudEventsJsonContentType, jsonResponse, MAX_WEBHOOK_BODY_BYTES, readHeader } from './http.js'
 import { createMemoryEventStore, type WebhookEventStore } from './idempotency.js'
 import { hasValidWebhookKey } from './security.js'
 import type { HeaderMap, OneHorizonWebhookEvent, WebhookLog, WebhookResponse } from './types.js'
@@ -39,8 +39,8 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
     return jsonResponse(405, { error: 'method not allowed for this webhook endpoint' })
   }
 
-  if (!hasJsonContentType(request.headers)) {
-    return jsonResponse(415, { error: 'send this webhook as application/json' })
+  if (!hasCloudEventsJsonContentType(request.headers)) {
+    return jsonResponse(415, { error: 'send this webhook as application/cloudevents+json' })
   }
 
   const parsed = parseBody(request)
@@ -86,10 +86,11 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
   log.info('Accepted One Horizon webhook', {
     id: eventId,
     type: eventType,
-    schema: event.schema,
-    workspaceId: event.workspace_id,
-    resource: event.resource,
-    actor: event.actor,
+    source: event.source,
+    subject: event.subject,
+    workspaceId: event.workspaceid,
+    resource: event.data.resource,
+    actor: event.data.actor,
     retryNum: readHeader(request.headers, 'x-one-retry-num'),
     retryReason: readHeader(request.headers, 'x-one-retry-reason')
   })
@@ -98,7 +99,7 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
     ok: true,
     id: eventId,
     type: eventType,
-    resource: event.resource
+    resource: event.data.resource
   })
 }
 
@@ -132,15 +133,27 @@ function parseWebhookEvent(value: unknown): { ok: true; event: OneHorizonWebhook
     return { ok: false, error: 'webhook payload must be a JSON object' }
   }
 
-  const requiredFields = ['id', 'type', 'schema', 'workspace_id', 'created_at'] as const
+  const requiredFields = ['specversion', 'id', 'type', 'source', 'time', 'datacontenttype', 'workspaceid'] as const
   const missing = requiredFields.find((field) => typeof value[field] !== 'string' || value[field].trim() === '')
 
   if (missing) {
     return { ok: false, error: `webhook payload is missing ${missing}` }
   }
 
-  if (value.schema !== 'one.webhook.event.v1') {
-    return { ok: false, error: 'unsupported One Horizon webhook schema' }
+  if (value.specversion !== '1.0') {
+    return { ok: false, error: 'unsupported CloudEvents specversion' }
+  }
+
+  if (value.datacontenttype !== 'application/json') {
+    return { ok: false, error: 'unsupported CloudEvents datacontenttype' }
+  }
+
+  if (!isRecord(value.data)) {
+    return { ok: false, error: 'webhook payload is missing data' }
+  }
+
+  if (!isRecord(value.data.resource)) {
+    return { ok: false, error: 'webhook payload is missing data.resource' }
   }
 
   return { ok: true, event: value as unknown as OneHorizonWebhookEvent }

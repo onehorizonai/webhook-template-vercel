@@ -4,10 +4,16 @@ export type HeaderMap = Record<string, HeaderValue> | { get: (name: string) => s
 export interface OneHorizonWebhookResource {
   type: string
   id?: string
-  workspace_id?: string
-  task_id?: string
-  comment_id?: string
-  team_id?: string
+  workspaceId?: string
+  taskId?: string
+  taskIds?: string[]
+  commentId?: string
+  teamId?: string
+  issueId?: string
+  meetingId?: string
+  summaryId?: string
+  documentId?: string
+  workItemId?: string
 }
 
 export interface OneHorizonWebhookActor {
@@ -16,22 +22,30 @@ export interface OneHorizonWebhookActor {
 }
 
 export interface OneHorizonWebhookEvent {
+  specversion: '1.0' | string
   id: string
   type: string
-  schema: 'one.webhook.event.v1' | string
-  workspace_id: string
-  created_at: string
-  resource?: OneHorizonWebhookResource
-  actor?: OneHorizonWebhookActor
-  session_id?: string
-  trigger?: string
-  prompt_context?: string
-  agent_session?: Record<string, unknown>
-  agent_activity?: Record<string, unknown>
-  previous_comments?: Array<Record<string, unknown>>
-  guidance?: Array<Record<string, unknown>>
-  context?: Record<string, unknown>
-  data?: unknown
+  source: string
+  time: string
+  datacontenttype: 'application/json' | string
+  subject?: string
+  workspaceid: string
+  data: {
+    resource: OneHorizonWebhookResource
+    actor?: OneHorizonWebhookActor
+    task?: Record<string, unknown>
+    comment?: Record<string, unknown>
+    commentReaction?: Record<string, unknown>
+    team?: Record<string, unknown>
+    invite?: Record<string, unknown>
+    taxonomy?: Record<string, unknown>
+    issue?: Record<string, unknown>
+    meeting?: Record<string, unknown>
+    summary?: Record<string, unknown>
+    document?: Record<string, unknown>
+    workItem?: Record<string, unknown>
+    taskSnooze?: Record<string, unknown>
+  }
 }
 
 export interface WebhookLog {

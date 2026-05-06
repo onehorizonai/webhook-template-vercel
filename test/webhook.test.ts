@@ -3,14 +3,19 @@ import { createMemoryEventStore } from '../src/idempotency.js'
 import { handleWebhook } from '../src/webhook.js'
 
 const payload = {
+  specversion: '1.0',
   id: 'evt_123',
   type: 'task.created',
-  schema: 'one.webhook.event.v1',
-  workspace_id: 'w_123',
-  created_at: '2026-05-05T12:00:00Z',
-  resource: { type: 'task', id: 'tsk_123', workspace_id: 'w_123' },
-  actor: { type: 'user', id: 'usr_123' },
-  data: {}
+  source: 'onehorizon/workspaces/w_123',
+  time: '2026-05-05T12:00:00Z',
+  datacontenttype: 'application/json',
+  subject: 'tsk_123',
+  workspaceid: 'w_123',
+  data: {
+    resource: { type: 'task', id: 'tsk_123', workspaceId: 'w_123' },
+    actor: { type: 'user', id: 'usr_123' },
+    task: { task: {} }
+  }
 }
 
 const log = {
@@ -19,7 +24,7 @@ const log = {
   error: vi.fn()
 }
 
-const jsonHeaders = { 'content-type': 'application/json' }
+const cloudEventsHeaders = { 'content-type': 'application/cloudevents+json; charset=utf-8' }
 
 describe('handleWebhook', () => {
   it('accepts HEAD verification requests', async () => {
@@ -49,7 +54,7 @@ describe('handleWebhook', () => {
     const response = await handleWebhook({
       method: 'POST',
       headers: {
-        ...jsonHeaders,
+        ...cloudEventsHeaders,
         'x-one-webhook-key': 'secret',
         'x-one-event-id': 'evt_header',
         'x-one-event-type': 'task.created'
@@ -71,7 +76,7 @@ describe('handleWebhook', () => {
   it('rejects invalid verification keys when configured', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: { ...jsonHeaders, 'x-one-webhook-key': 'wrong' },
+      headers: { ...cloudEventsHeaders, 'x-one-webhook-key': 'wrong' },
       rawBody: JSON.stringify(payload),
       env: { ONE_WEBHOOK_KEY: 'secret' },
       log
@@ -83,7 +88,7 @@ describe('handleWebhook', () => {
   it('does not require ONE_API_KEY for the hello world path', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       body: payload,
       env: {},
       eventStore: createMemoryEventStore(),
@@ -96,7 +101,7 @@ describe('handleWebhook', () => {
   it('rejects invalid JSON', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       rawBody: '{',
       env: {},
       log
@@ -105,7 +110,7 @@ describe('handleWebhook', () => {
     expect(response.status).toBe(400)
   })
 
-  it('rejects POST requests without a JSON content type', async () => {
+  it('rejects POST requests without a CloudEvents JSON content type', async () => {
     const response = await handleWebhook({
       method: 'POST',
       headers: {},
@@ -120,7 +125,7 @@ describe('handleWebhook', () => {
   it('rejects missing required event fields', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       body: { ...payload, id: '' },
       env: {},
       log
@@ -130,11 +135,23 @@ describe('handleWebhook', () => {
     expect(response.body).toMatchObject({ error: 'webhook payload is missing id' })
   })
 
-  it('rejects unsupported webhook schemas', async () => {
+  it('rejects unsupported CloudEvents spec versions', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
-      body: { ...payload, schema: 'example.v2' },
+      headers: cloudEventsHeaders,
+      body: { ...payload, specversion: '0.3' },
+      env: {},
+      log
+    })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('rejects unsupported CloudEvents data content types', async () => {
+    const response = await handleWebhook({
+      method: 'POST',
+      headers: cloudEventsHeaders,
+      body: { ...payload, datacontenttype: 'text/plain' },
       env: {},
       log
     })
@@ -145,7 +162,7 @@ describe('handleWebhook', () => {
   it('rejects oversized payloads', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       rawBody: JSON.stringify({ ...payload, data: 'x'.repeat(300 * 1024) }),
       env: {},
       log
@@ -158,7 +175,7 @@ describe('handleWebhook', () => {
     const eventStore = createMemoryEventStore()
     const first = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       body: payload,
       env: {},
       eventStore,
@@ -166,7 +183,7 @@ describe('handleWebhook', () => {
     })
     const second = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       body: payload,
       env: {},
       eventStore,
@@ -181,7 +198,7 @@ describe('handleWebhook', () => {
   it('returns a retryable error when the idempotency store fails', async () => {
     const response = await handleWebhook({
       method: 'POST',
-      headers: jsonHeaders,
+      headers: cloudEventsHeaders,
       body: payload,
       env: {},
       eventStore: {

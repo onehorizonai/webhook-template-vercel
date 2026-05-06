@@ -32,8 +32,9 @@ export function readHeader(headers: HeaderMap, name: string): string | undefined
   return Array.isArray(value) ? value[0] : value
 }
 
-export function hasJsonContentType(headers: HeaderMap): boolean {
-  return readHeader(headers, 'content-type')?.toLowerCase().includes('application/json') ?? false
+export function hasCloudEventsJsonContentType(headers: HeaderMap): boolean {
+  const contentType = readHeader(headers, 'content-type')?.toLowerCase() ?? ''
+  return contentType.split(';', 1)[0]?.trim() === 'application/cloudevents+json'
 }
 
 function hasHeaderGetter(headers: HeaderMap): headers is { get: (name: string) => string | null } {
