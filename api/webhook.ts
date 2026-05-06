@@ -1,5 +1,19 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handleWebhook } from '../src/webhook.js'
+
+type HeaderValue = string | string[] | undefined
+
+interface VercelRequest {
+  method?: string
+  headers: Record<string, HeaderValue>
+  body?: unknown
+}
+
+interface VercelResponse {
+  status(code: number): VercelResponse
+  setHeader(name: string, value: string): void
+  end(): void
+  json(body: unknown): void
+}
 
 export default async function webhook(request: VercelRequest, response: VercelResponse) {
   const result = await handleWebhook({
