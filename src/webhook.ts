@@ -32,6 +32,8 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
   }
 
   if (method === 'HEAD' || method === 'GET') {
+    // Demo only: verification requests usually do not include an event payload.
+    console.log('Received One Horizon webhook verification request', { method })
     return emptyResponse()
   }
 
