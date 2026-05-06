@@ -13,6 +13,8 @@ Vercel version of the One Horizon webhook starter. One function, the webhook cod
 
 Vercel rewrites `/webhook` to `api/webhook.ts`. The function accepts `HEAD`, `GET`, and CloudEvents JSON `POST`.
 
+The small `public/index.html` page is intentional. Vercel expects an output directory for this project shape after the build completes, so `vercel.json` pins `outputDirectory` to `public`.
+
 ## One Horizon links
 
 - [One Horizon](https://onehorizon.ai)
