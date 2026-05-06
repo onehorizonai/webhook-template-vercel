@@ -2,7 +2,7 @@
 
 Vercel version of the One Horizon webhook starter. One function, the webhook code, and nothing from the other hosts.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/onehorizonai/webhook-template-vercel&env=ONE_WEBHOOK_KEY,ONE_API_KEY&envDescription=Paste%20ONE_WEBHOOK_KEY%20from%20your%20One%20Horizon%20webhook%20settings.%20ONE_API_KEY%20is%20optional%20and%20only%20needed%20for%20SDK%20follow-up%20calls.)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/onehorizonai/webhook-template-vercel&env=ONE_WEBHOOK_KEY&envDescription=Paste%20ONE_WEBHOOK_KEY%20from%20your%20One%20Horizon%20webhook%20settings.)
 
 ## Files to look at
 
@@ -25,6 +25,8 @@ The small `public/index.html` page is intentional. Vercel expects an output dire
 ```bash
 npm i @onehorizon/sdk-js
 ```
+
+`ONE_API_KEY` is not needed for the deploy button. Add it later only if you call the One Horizon SDK from your handler.
 
 ## Run it locally
 
@@ -52,6 +54,8 @@ curl http://localhost:3000/webhook \
 4. Add the deployed `/webhook` URL.
 5. Pick the events you want.
 6. Click **Verify**.
+
+If you add SDK follow-up calls, create a separate `ONE_API_KEY` environment variable in Vercel after the first deploy.
 
 ## Replace before real use
 
