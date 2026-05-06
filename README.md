@@ -44,6 +44,8 @@ cp .env.example .env
 yarn dev
 ```
 
+`yarn dev` runs a small local server that uses the same shared webhook handler as the Vercel Function. Do not point the `dev` script at `vercel dev`; the Vercel CLI treats that as a recursive command.
+
 ```bash
 curl http://localhost:3000/webhook \
   -X POST \

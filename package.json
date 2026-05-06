@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "npx vercel dev",
+    "dev": "tsx scripts/dev-server.ts",
     "build": "tsc",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   },
