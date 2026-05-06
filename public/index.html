@@ -36,6 +36,16 @@
         line-height: 1.55;
       }
 
+      ol {
+        margin: 0 0 16px;
+        padding-left: 22px;
+        line-height: 1.55;
+      }
+
+      li {
+        margin-bottom: 8px;
+      }
+
       code {
         padding: 3px 6px;
         border-radius: 4px;
@@ -59,6 +69,12 @@
       <h1>One Horizon webhook receiver</h1>
       <p>This Vercel project is ready to receive One Horizon app webhooks.</p>
       <p>Use <code>/webhook</code> as the endpoint in One Horizon.</p>
+      <p>If <code>/webhook</code> returns <code>401</code>, the request is missing the webhook key or the key does not match.</p>
+      <ol>
+        <li>Set <code>ONE_WEBHOOK_KEY</code> in Vercel.</li>
+        <li>Use the same key in your One Horizon webhook settings.</li>
+        <li>Send requests with the <code>x-one-webhook-key</code> header.</li>
+      </ol>
     </main>
   </body>
 </html>

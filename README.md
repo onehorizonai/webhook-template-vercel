@@ -15,6 +15,12 @@ Vercel rewrites `/webhook` to `api/webhook.ts`. The function accepts `HEAD`, `GE
 
 The small `public/index.html` page is intentional. Vercel expects an output directory for this project shape after the build completes, so `vercel.json` pins `outputDirectory` to `public`.
 
+## Seeing a 401?
+
+That is expected if you open `/webhook` in a browser. The webhook endpoint is protected and only accepts requests with an `x-one-webhook-key` header that matches `ONE_WEBHOOK_KEY` in Vercel.
+
+Use the root URL, `/`, to check that the deployment is live. Use `/webhook` only as the endpoint URL in One Horizon.
+
 ## One Horizon links
 
 - [One Horizon](https://onehorizon.ai)
@@ -48,6 +54,14 @@ curl http://localhost:3000/webhook \
   --data @sample-payloads/task-created.json
 ```
 
+For a deployed Vercel app, use the same header:
+
+```bash
+curl https://your-project.vercel.app/webhook \
+  -I \
+  -H "x-one-webhook-key: paste-one-horizon-webhook-key-here"
+```
+
 ## Connect it to One Horizon
 
 1. Deploy this repo to Vercel.
@@ -56,6 +70,8 @@ curl http://localhost:3000/webhook \
 4. Add the deployed `/webhook` URL.
 5. Pick the events you want.
 6. Click **Verify**.
+
+The value in One Horizon must match the `ONE_WEBHOOK_KEY` environment variable in Vercel. If they differ, `/webhook` returns `401`.
 
 If you add SDK follow-up calls, create a separate `ONE_API_KEY` environment variable in Vercel after the first deploy.
 
