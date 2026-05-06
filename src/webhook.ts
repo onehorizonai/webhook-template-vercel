@@ -59,6 +59,9 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
   const eventId = headerEventId || event.id
   const eventType = headerEventType || event.type
 
+  // Demo only: remove this before production because webhook payloads can contain private workspace data.
+  console.log('Received One Horizon webhook payload', event)
+
   try {
     if (await eventStore.has(eventId)) {
       log.info('Accepted duplicate One Horizon webhook without reprocessing it', {
