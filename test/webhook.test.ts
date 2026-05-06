@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import vercelWebhook from '../api/webhook.js'
 import { createMemoryEventStore } from '../src/idempotency.js'
 import { handleWebhook } from '../src/webhook.js'
 
@@ -228,5 +229,24 @@ describe('handleWebhook', () => {
     })
 
     expect(response.status).toBe(500)
+  })
+})
+
+describe('Vercel webhook adapter', () => {
+  it('reads raw CloudEvents JSON request bodies', async () => {
+    const response = await vercelWebhook.fetch(
+      new Request('https://example.com/webhook', {
+        method: 'POST',
+        headers: cloudEventsHeaders,
+        body: JSON.stringify(payload)
+      })
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      id: 'evt_123',
+      type: 'task.created'
+    })
   })
 })

@@ -38,20 +38,31 @@ export async function handleWebhook(request: WebhookRequest): Promise<WebhookRes
   }
 
   if (method !== 'POST') {
+    log.warn('Rejected One Horizon webhook because the HTTP method is not supported', { method })
     return jsonResponse(405, { error: 'method not allowed for this webhook endpoint' })
   }
 
   if (!hasCloudEventsJsonContentType(request.headers)) {
+    log.warn('Rejected One Horizon webhook because the content type is not CloudEvents JSON', {
+      contentType: readHeader(request.headers, 'content-type')
+    })
     return jsonResponse(415, { error: 'send this webhook as application/cloudevents+json' })
   }
 
   const parsed = parseBody(request)
   if (!parsed.ok) {
+    log.warn('Rejected One Horizon webhook because the payload could not be parsed', {
+      status: parsed.status,
+      error: parsed.error
+    })
     return jsonResponse(parsed.status, { error: parsed.error })
   }
 
   const validated = parseWebhookEvent(parsed.value)
   if (!validated.ok) {
+    log.warn('Rejected One Horizon webhook because the payload shape is invalid', {
+      error: validated.error
+    })
     return jsonResponse(400, { error: validated.error })
   }
 
