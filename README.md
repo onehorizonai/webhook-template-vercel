@@ -36,7 +36,7 @@ npm i @onehorizon/sdk-js
 
 ## Run it locally
 
-Use Node 20. The repo includes `.nvmrc` and `.node-version`.
+Use Node 24. The repo includes `.nvmrc` and `.node-version`.
 
 ```bash
 yarn install
