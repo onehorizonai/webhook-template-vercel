@@ -1,13 +1,13 @@
-# One Horizon webhooks on Vercel
+# One Horizon webhook receiver for Vercel
 
-Vercel version of the One Horizon webhook starter. One function, the webhook code, and nothing from the other hosts.
+A small Vercel Function that receives One Horizon app webhooks. It uses the One Horizon SDK types, checks the webhook key, reads the raw CloudEvents JSON body, and returns quickly.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/onehorizonai/webhook-template-vercel&env=ONE_WEBHOOK_KEY&envDescription=Paste%20ONE_WEBHOOK_KEY%20from%20your%20One%20Horizon%20webhook%20settings.)
 
 ## Files to look at
 
 - `api/webhook.ts`: the Vercel Function
-- `src/webhook.ts`: key check, CloudEvents JSON parsing, event validation, idempotency
+- `src/webhook.ts`: key check, CloudEvents JSON parsing, SDK event typing, idempotency
 - `sample-payloads/`: example One Horizon events
 - `src/sdk.ts`: optional API calls after receiving an event
 
@@ -29,11 +29,10 @@ Use the root URL, `/`, to check that the deployment is live. Use `/webhook` only
 - [JavaScript SDK](https://www.npmjs.com/package/@onehorizon/sdk-js)
 
 ```bash
-npm i @onehorizon/sdk-js
+npm i @onehorizon/sdk-js@latest
 ```
 
-Webhook event and payload types come from `@onehorizon/sdk-js`. `src/types.ts`
-only keeps local adapter types for headers, logging, and responses.
+Webhook event and payload types come from `@onehorizon/sdk-js`.
 
 `ONE_API_KEY` is not needed for the deploy button. Add it later only if you call the One Horizon SDK from your handler.
 
@@ -43,15 +42,14 @@ Use Node 24. The repo includes `.nvmrc` and `.node-version`.
 
 ```bash
 yarn install
-cp .env.example .env
-yarn dev
+ONE_WEBHOOK_KEY=demo npx vercel@latest dev
 ```
 
 ```bash
 curl http://localhost:3000/webhook \
   -X POST \
   -H "content-type: application/cloudevents+json; charset=utf-8" \
-  -H "x-one-webhook-key: paste-one-horizon-webhook-key-here" \
+  -H "x-one-webhook-key: demo" \
   -H "x-one-event-id: evt_task_created" \
   -H "x-one-event-type: task.created" \
   --data @sample-payloads/task-created.json
@@ -78,7 +76,7 @@ The value in One Horizon must match the `ONE_WEBHOOK_KEY` environment variable i
 
 If you add SDK follow-up calls, create a separate `ONE_API_KEY` environment variable in Vercel after the first deploy.
 
-## Replace before real use
+## Before real use
 
 The event store is just memory. Before this does anything real, save processed event IDs in Redis, Postgres, or another durable store. Keep the handler quick; One Horizon times out after 3 seconds.
 

@@ -67,9 +67,9 @@
   <body>
     <main>
       <h1>One Horizon webhook receiver</h1>
-      <p>This Vercel project is ready to receive One Horizon app webhooks.</p>
-      <p>Use <code>/webhook</code> as the endpoint in One Horizon.</p>
-      <p>If <code>/webhook</code> returns <code>401</code>, the request is missing the webhook key or the key does not match.</p>
+      <p>This Vercel project is ready for One Horizon app webhooks.</p>
+      <p>Use <code>/webhook</code> as the endpoint URL in One Horizon.</p>
+      <p>A browser visit to <code>/webhook</code> can return <code>401</code>. Send the webhook key header instead.</p>
       <ol>
         <li>Set <code>ONE_WEBHOOK_KEY</code> in Vercel.</li>
         <li>Use the same key in your One Horizon webhook settings.</li>
