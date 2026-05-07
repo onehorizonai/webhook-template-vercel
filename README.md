@@ -7,6 +7,7 @@ A small Vercel Function that receives One Horizon app webhooks. It uses the One 
 ## Files to look at
 
 - `api/webhook.ts`: the Vercel Function
+- `public/index.html`: the root deployment status page
 - `src/webhook.ts`: key check, CloudEvents JSON parsing, SDK event typing, idempotency
 - `sample-payloads/`: example One Horizon events
 - `src/sdk.ts`: optional API calls after receiving an event
