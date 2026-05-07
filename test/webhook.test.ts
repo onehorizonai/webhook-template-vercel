@@ -1,23 +1,33 @@
 import { describe, expect, it, vi } from 'vitest'
+import { WebhookEventToJSON } from '@onehorizon/sdk-js'
+import type { WebhookEvent } from '@onehorizon/sdk-js'
 import vercelWebhook from '../api/webhook.js'
 import { createMemoryEventStore } from '../src/idempotency.js'
 import { handleWebhook } from '../src/webhook.js'
 
-const payload = {
+const payload = WebhookEventToJSON({
   specversion: '1.0',
   id: 'evt_123',
   type: 'task.created',
   source: 'onehorizon/workspaces/w_123',
-  time: '2026-05-05T12:00:00Z',
+  time: new Date('2026-05-05T12:00:00Z'),
   datacontenttype: 'application/json',
   subject: 'tsk_123',
   workspaceid: 'w_123',
   data: {
     resource: { type: 'task', id: 'tsk_123', workspaceId: 'w_123' },
     actor: { type: 'user', id: 'usr_123' },
-    task: { task: {} }
+    task: {
+      task: {
+        taskId: 'tsk_123',
+        workspaceId: 'w_123',
+        title: 'Review launch checklist',
+        status: 'planned',
+        visibility: 'team'
+      }
+    }
   }
-}
+} satisfies WebhookEvent)
 
 const log = {
   info: vi.fn(),

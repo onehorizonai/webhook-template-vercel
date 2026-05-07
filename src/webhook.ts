@@ -1,3 +1,4 @@
+import { WebhookEventFromJSON } from '@onehorizon/sdk-js'
 import { emptyResponse, hasCloudEventsJsonContentType, jsonResponse, MAX_WEBHOOK_BODY_BYTES, readHeader } from './http.js'
 import { createMemoryEventStore, type WebhookEventStore } from './idempotency.js'
 import { hasValidWebhookKey } from './security.js'
@@ -184,7 +185,7 @@ function parseWebhookEvent(value: unknown): { ok: true; event: OneHorizonWebhook
     return { ok: false, error: 'webhook payload is missing data.resource' }
   }
 
-  return { ok: true, event: value as unknown as OneHorizonWebhookEvent }
+  return { ok: true, event: WebhookEventFromJSON(value) }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

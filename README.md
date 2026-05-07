@@ -32,6 +32,9 @@ Use the root URL, `/`, to check that the deployment is live. Use `/webhook` only
 npm i @onehorizon/sdk-js
 ```
 
+Webhook event and payload types come from `@onehorizon/sdk-js`. `src/types.ts`
+only keeps local adapter types for headers, logging, and responses.
+
 `ONE_API_KEY` is not needed for the deploy button. Add it later only if you call the One Horizon SDK from your handler.
 
 ## Run it locally

@@ -137,10 +137,10 @@
   resolved "https://registry.yarnpkg.com/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.5.tgz#6912b00d2c631c0d15ce1a7ab57cd657f2a8f8ba"
   integrity sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==
 
-"@onehorizon/sdk-js@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@onehorizon/sdk-js/-/sdk-js-1.1.0.tgz#42b3e337385c20c969be865afd593aa83089d128"
-  integrity sha512-jnx1tijCHIuMOG18RB/nFRVlOo9JY/c/yrVsoIA3oKUt2k02dLnOqkPz6bf/zt9b6xGo0JRzwqZD4a9qmmcQMQ==
+"@onehorizon/sdk-js@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@onehorizon/sdk-js/-/sdk-js-2.1.0.tgz#95cba03ad9cb76d5858322254a7fa7509a698317"
+  integrity sha512-xakE+PhHCXdN48Jnq50+pkRSBYkFeT55oKRnGc+Ia3mDg/za3LD5KC5sruJJyhENfG32D2LMDSe0aDA6xBZWzg==
 
 "@rollup/rollup-android-arm-eabi@4.60.3":
   version "4.60.3"

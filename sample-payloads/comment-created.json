@@ -20,7 +20,13 @@
       "id": "usr_123"
     },
     "comment": {
-      "comment": {}
+      "comment": {
+        "commentId": "comment_123",
+        "workspaceId": "w_123",
+        "taskId": "tsk_123",
+        "userId": "usr_123",
+        "content": "Looks good to ship."
+      }
     }
   }
 }

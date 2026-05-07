@@ -1,5 +1,5 @@
 import { Configuration, TasksApi } from '@onehorizon/sdk-js'
-import type { OneHorizonWebhookEvent } from './types.js'
+import type { WebhookEvent } from '@onehorizon/sdk-js'
 
 export function createOneHorizonTasksClient(apiKey = process.env.ONE_API_KEY): TasksApi | undefined {
   if (!apiKey) {
@@ -9,7 +9,7 @@ export function createOneHorizonTasksClient(apiKey = process.env.ONE_API_KEY): T
   return new TasksApi(new Configuration({ accessToken: apiKey }))
 }
 
-export async function fetchRelatedTask(event: OneHorizonWebhookEvent, apiKey = process.env.ONE_API_KEY) {
+export async function fetchRelatedTask(event: WebhookEvent, apiKey = process.env.ONE_API_KEY) {
   const resource = event.data.resource
   const taskId = resource.taskId || (resource.type === 'task' ? resource.id : undefined)
   const tasks = createOneHorizonTasksClient(apiKey)
