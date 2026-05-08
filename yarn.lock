@@ -36,7 +36,7 @@
   dependencies:
     "@tybys/wasm-util" "^0.10.1"
 
-"@onehorizon/sdk-js@^2.0.0":
+"@onehorizon/sdk-js@latest":
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/@onehorizon/sdk-js/-/sdk-js-2.3.0.tgz#9c5a0ac7558c65f84b98f99775806183a9dcb991"
   integrity sha512-37K9M10KzuQQHc/j1RPaizRm2UkhUqPt6WY0HK77pFjuDR4ve7onlFweFub7T79iK/KNcnICFSPAdKGsuWNVqA==
