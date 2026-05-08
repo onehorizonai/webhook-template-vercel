@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
 import { WebhookEventToJSON } from '@onehorizon/sdk-js'
+import { describe, expect, it, vi } from 'vitest'
 import type { WebhookEvent } from '@onehorizon/sdk-js'
 import vercelWebhook from '../api/webhook.js'
-import { createMemoryEventStore, handleWebhook } from '../src/webhook.js'
+import { createMemoryEventStore, handleWebhookRequest, type WebhookOptions } from '../src/webhook.js'
 
 const payload = WebhookEventToJSON({
   specversion: '1.0',
@@ -26,218 +26,170 @@ const payload = WebhookEventToJSON({
   }
 } satisfies WebhookEvent)
 
+const cloudEventsHeaders = { 'content-type': 'application/cloudevents+json; charset=utf-8' }
 const log = {
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn()
 }
 
-const cloudEventsHeaders = { 'content-type': 'application/cloudevents+json; charset=utf-8' }
+interface SendWebhookOptions {
+  method?: string
+  headers?: HeadersInit
+  body?: unknown
+  env?: WebhookOptions['env']
+  eventStore?: WebhookOptions['eventStore']
+}
 
-describe('handleWebhook', () => {
+async function sendWebhook(options: SendWebhookOptions = {}) {
+  const method = options.method ?? 'POST'
+  const body = options.body === undefined ? undefined : serialize(options.body)
+
+  return handleWebhookRequest(
+    new Request('https://example.com/webhook', {
+      method,
+      headers: options.headers ?? cloudEventsHeaders,
+      body: method === 'GET' || method === 'HEAD' ? undefined : body
+    }),
+    {
+      env: options.env,
+      eventStore: options.eventStore ?? createMemoryEventStore(),
+      log
+    }
+  )
+}
+
+function serialize(body: unknown): BodyInit {
+  return typeof body === 'string' ? body : JSON.stringify(body)
+}
+
+describe('handleWebhookRequest', () => {
   it('uses the flattened One Horizon webhook payload shape', () => {
     expect(payload.data.task).toMatchObject({ taskId: 'tsk_123' })
     expect(payload.data.task?.task).toBeUndefined()
   })
 
   it('accepts HEAD verification requests', async () => {
-    const response = await handleWebhook({
+    const response = await sendWebhook({
       method: 'HEAD',
       headers: { 'x-one-webhook-key': 'secret' },
-      env: { ONE_WEBHOOK_KEY: 'secret' },
-      log
+      env: { ONE_WEBHOOK_KEY: 'secret' }
     })
 
     expect(response.status).toBe(204)
-    expect(response.body).toBeUndefined()
+    expect(await response.text()).toBe('')
   })
 
   it('accepts GET verification requests', async () => {
-    const response = await handleWebhook({
-      method: 'GET',
-      headers: {},
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ method: 'GET', headers: {} })
 
     expect(response.status).toBe(204)
   })
 
   it('accepts valid POST JSON', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
+    const response = await sendWebhook({
       headers: {
         ...cloudEventsHeaders,
         'x-one-webhook-key': 'secret',
         'x-one-event-id': 'evt_header',
         'x-one-event-type': 'task.created'
       },
-      rawBody: JSON.stringify(payload),
-      env: { ONE_WEBHOOK_KEY: 'secret' },
-      eventStore: createMemoryEventStore(),
-      log
+      body: payload,
+      env: { ONE_WEBHOOK_KEY: 'secret' }
     })
 
     expect(response.status).toBe(200)
-    expect(response.body).toMatchObject({
+    await expect(response.json()).resolves.toMatchObject({
       ok: true,
       id: 'evt_header',
       type: 'task.created'
     })
   })
 
-  it('accepts Vercel dev string bodies', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: JSON.stringify({ ...payload, type: 'task.updated' }),
-      env: {},
-      eventStore: createMemoryEventStore(),
-      log
+  it('accepts string request bodies', async () => {
+    const response = await sendWebhook({
+      body: JSON.stringify({ ...payload, type: 'task.updated' })
     })
 
     expect(response.status).toBe(200)
-    expect(response.body).toMatchObject({
+    await expect(response.json()).resolves.toMatchObject({
       ok: true,
       type: 'task.updated'
     })
   })
 
   it('rejects invalid verification keys when configured', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
+    const response = await sendWebhook({
       headers: { ...cloudEventsHeaders, 'x-one-webhook-key': 'wrong' },
-      rawBody: JSON.stringify(payload),
-      env: { ONE_WEBHOOK_KEY: 'secret' },
-      log
+      body: payload,
+      env: { ONE_WEBHOOK_KEY: 'secret' }
     })
 
     expect(response.status).toBe(401)
   })
 
   it('does not require ONE_API_KEY for the hello world path', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: payload,
-      env: {},
-      eventStore: createMemoryEventStore(),
-      log
-    })
+    const response = await sendWebhook({ body: payload })
 
     expect(response.status).toBe(200)
   })
 
   it('rejects invalid JSON', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      rawBody: '{',
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ body: '{' })
 
     expect(response.status).toBe(400)
   })
 
   it('rejects POST requests without a CloudEvents JSON content type', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: {},
-      rawBody: JSON.stringify(payload),
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ headers: {}, body: payload })
 
     expect(response.status).toBe(415)
   })
 
   it('rejects missing required event fields', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: { ...payload, id: '' },
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ body: { ...payload, id: '' } })
 
     expect(response.status).toBe(400)
-    expect(response.body).toMatchObject({ error: 'webhook payload is missing id' })
+    await expect(response.json()).resolves.toMatchObject({ error: 'webhook payload is missing id' })
   })
 
   it('rejects unsupported CloudEvents spec versions', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: { ...payload, specversion: '0.3' },
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ body: { ...payload, specversion: '0.3' } })
 
     expect(response.status).toBe(400)
   })
 
   it('rejects unsupported CloudEvents data content types', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: { ...payload, datacontenttype: 'text/plain' },
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ body: { ...payload, datacontenttype: 'text/plain' } })
 
     expect(response.status).toBe(400)
   })
 
   it('rejects oversized payloads', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      rawBody: JSON.stringify({ ...payload, data: 'x'.repeat(300 * 1024) }),
-      env: {},
-      log
-    })
+    const response = await sendWebhook({ body: { ...payload, data: 'x'.repeat(300 * 1024) } })
 
     expect(response.status).toBe(413)
   })
 
   it('accepts duplicate events without reprocessing', async () => {
     const eventStore = createMemoryEventStore()
-    const first = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: payload,
-      env: {},
-      eventStore,
-      log
-    })
-    const second = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
-      body: payload,
-      env: {},
-      eventStore,
-      log
-    })
+    const first = await sendWebhook({ body: payload, eventStore })
+    const second = await sendWebhook({ body: payload, eventStore })
 
     expect(first.status).toBe(200)
     expect(second.status).toBe(200)
-    expect(second.body).toMatchObject({ duplicate: true })
+    await expect(second.json()).resolves.toMatchObject({ duplicate: true })
   })
 
   it('returns a retryable error when the idempotency store fails', async () => {
-    const response = await handleWebhook({
-      method: 'POST',
-      headers: cloudEventsHeaders,
+    const response = await sendWebhook({
       body: payload,
-      env: {},
       eventStore: {
         has: () => {
           throw new Error('store unavailable')
         },
-        remember: () => undefined
-      },
-      log
+        save: () => undefined
+      }
     })
 
     expect(response.status).toBe(500)

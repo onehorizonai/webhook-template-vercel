@@ -3,164 +3,102 @@ import type { WebhookEvent } from '@onehorizon/sdk-js'
 
 export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024
 
-export type HeaderMap = Headers | Record<string, string | string[] | undefined>
-export type RawWebhookBody = string | ArrayBuffer | Uint8Array
 export type WebhookEnv = Record<string, string | undefined>
 
-export interface WebhookRequest {
-  method: string
-  headers: HeaderMap
-  body?: unknown
-  rawBody?: RawWebhookBody
+export interface WebhookOptions {
   env?: WebhookEnv
   eventStore?: WebhookEventStore
-  log?: WebhookLog
-}
-
-export interface WebhookResponse {
-  status: number
-  headers: Record<string, string>
-  body?: unknown
-}
-
-export interface WebhookLog {
-  info: (message: string, data?: Record<string, unknown>) => void
-  warn: (message: string, data?: Record<string, unknown>) => void
-  error: (message: string, data?: Record<string, unknown>) => void
+  log?: Pick<Console, 'info' | 'warn' | 'error'>
 }
 
 export interface WebhookEventStore {
   has: (eventId: string) => boolean | Promise<boolean>
-  remember: (eventId: string) => void | Promise<void>
+  save: (eventId: string) => void | Promise<void>
 }
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
-const defaultLog: WebhookLog = console
 const defaultEventStore = createMemoryEventStore()
 
-const jsonHeaders = {
-  'content-type': 'application/json; charset=utf-8',
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff'
-}
-
-const emptyHeaders = {
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff'
-}
-
-export async function handleWebhookRequest(
-  request: Request,
-  options: Pick<WebhookRequest, 'env' | 'eventStore' | 'log'> = {}
-): Promise<Response> {
-  const response = await handleWebhook({
-    ...options,
-    method: request.method,
-    headers: request.headers,
-    rawBody: request.method.toUpperCase() === 'POST' ? await request.arrayBuffer() : undefined
-  })
-
-  return toFetchResponse(response, request.method)
-}
-
-export async function handleWebhook(request: WebhookRequest): Promise<WebhookResponse> {
-  const env = request.env ?? runtimeEnv()
-  const log = request.log ?? defaultLog
-  const eventStore = request.eventStore ?? defaultEventStore
+export async function handleWebhookRequest(request: Request, options: WebhookOptions = {}): Promise<Response> {
+  const env = options.env ?? runtimeEnv()
+  const eventStore = options.eventStore ?? defaultEventStore
+  const log = options.log ?? console
   const method = request.method.toUpperCase()
 
-  if (!(await hasValidWebhookKey(readHeader(request.headers, 'x-one-webhook-key'), env.ONE_WEBHOOK_KEY))) {
+  // Set ONE_WEBHOOK_KEY in production so only One Horizon can call this endpoint.
+  if (!(await hasValidWebhookKey(request.headers.get('x-one-webhook-key'), env.ONE_WEBHOOK_KEY))) {
     log.warn('Rejected One Horizon webhook because the verification key did not match')
-    return jsonResponse(401, { error: 'invalid One Horizon webhook key' })
+    return json(401, { error: 'invalid One Horizon webhook key' })
   }
 
+  // One Horizon uses GET and HEAD to check that the endpoint exists before sending events.
   if (method === 'HEAD' || method === 'GET') {
     log.info('Verified One Horizon webhook endpoint', { method })
-    return emptyResponse()
+    return new Response(null, { status: 204, headers: safeHeaders })
   }
 
   if (method !== 'POST') {
     log.warn('Rejected One Horizon webhook because the HTTP method is not supported', { method })
-    return jsonResponse(405, { error: 'method not allowed for this webhook endpoint' })
+    return json(405, { error: 'method not allowed for this webhook endpoint' })
   }
 
-  if (!hasCloudEventsJsonContentType(request.headers)) {
+  // One Horizon sends webhook deliveries as CloudEvents JSON.
+  if (!isCloudEventsJson(request.headers.get('content-type'))) {
     log.warn('Rejected One Horizon webhook because the content type is not CloudEvents JSON', {
-      contentType: readHeader(request.headers, 'content-type')
+      contentType: request.headers.get('content-type')
     })
-    return jsonResponse(415, { error: 'send this webhook as application/cloudevents+json' })
+    return json(415, { error: 'send this webhook as application/cloudevents+json' })
   }
 
-  const parsed = parseBody(request)
-  if (!parsed.ok) {
-    log.warn('Rejected One Horizon webhook because the payload could not be parsed', {
-      status: parsed.status,
-      error: parsed.error
-    })
-    return jsonResponse(parsed.status, { error: parsed.error })
+  const parsedBody = await readJson(request)
+  if (!parsedBody.ok) {
+    log.warn('Rejected One Horizon webhook because the payload could not be parsed', parsedBody)
+    return json(parsedBody.status, { error: parsedBody.error })
   }
 
-  const validated = parseWebhookEvent(parsed.value)
-  if (!validated.ok) {
-    log.warn('Rejected One Horizon webhook because the payload shape is invalid', { error: validated.error })
-    return jsonResponse(400, { error: validated.error })
+  const parsedEvent = parseWebhookEvent(parsedBody.value)
+  if (!parsedEvent.ok) {
+    log.warn('Rejected One Horizon webhook because the payload shape is invalid', { error: parsedEvent.error })
+    return json(400, { error: parsedEvent.error })
   }
 
-  const event = validated.event
-  const eventId = readHeader(request.headers, 'x-one-event-id') || event.id
-  const eventType = readHeader(request.headers, 'x-one-event-type') || event.type
+  const event = parsedEvent.event
+  const id = request.headers.get('x-one-event-id') || event.id
+  const type = request.headers.get('x-one-event-type') || event.type
 
-  // Demo only: remove this before production because payloads can contain private workspace data.
+  // Useful while testing. Remove this before production because payloads can contain workspace data.
   log.info('Received One Horizon webhook payload', { event })
 
   try {
-    if (await eventStore.has(eventId)) {
-      log.info('Accepted duplicate One Horizon webhook without reprocessing it', { id: eventId, type: eventType })
-      return jsonResponse(200, { ok: true, duplicate: true, id: eventId, type: eventType })
+    if (await eventStore.has(id)) {
+      log.info('Accepted duplicate One Horizon webhook without reprocessing it', { id, type })
+      return json(200, { ok: true, duplicate: true, id, type })
     }
 
-    await eventStore.remember(eventId)
+    // Store event IDs before side effects. Use Redis, Postgres, or your app DB in production.
+    await eventStore.save(id)
   } catch (error) {
     log.error('Failed to record One Horizon webhook idempotency state', {
-      id: eventId,
-      type: eventType,
+      id,
+      type,
       error: error instanceof Error ? error.message : String(error)
     })
-    return jsonResponse(500, { error: 'failed to record webhook idempotency state' })
+    return json(500, { error: 'failed to record webhook idempotency state' })
   }
 
+  // Keep the webhook fast. Queue slow work here instead of doing it before the 2xx response.
   log.info('Accepted One Horizon webhook', {
-    id: eventId,
-    type: eventType,
-    source: event.source,
-    subject: event.subject,
+    id,
+    type,
     workspaceId: event.workspaceid,
     resource: event.data.resource,
     actor: event.data.actor,
-    retryNum: readHeader(request.headers, 'x-one-retry-num'),
-    retryReason: readHeader(request.headers, 'x-one-retry-reason')
+    retryNum: request.headers.get('x-one-retry-num'),
+    retryReason: request.headers.get('x-one-retry-reason')
   })
 
-  return jsonResponse(200, {
-    ok: true,
-    id: eventId,
-    type: eventType,
-    resource: event.data.resource
-  })
-}
-
-export function jsonResponse(status: number, body: unknown): WebhookResponse {
-  return { status, headers: jsonHeaders, body }
-}
-
-export function emptyResponse(status = 204): WebhookResponse {
-  return { status, headers: emptyHeaders }
-}
-
-export function toFetchResponse(response: WebhookResponse, method = 'GET'): Response {
-  const body = method.toUpperCase() === 'HEAD' || response.body === undefined ? null : JSON.stringify(response.body)
-  return new Response(body, { status: response.status, headers: response.headers })
+  return json(200, { ok: true, id, type, resource: event.data.resource })
 }
 
 export function createMemoryEventStore(maxEvents = 1000): WebhookEventStore {
@@ -169,7 +107,7 @@ export function createMemoryEventStore(maxEvents = 1000): WebhookEventStore {
 
   return {
     has: (eventId) => seen.has(eventId),
-    remember(eventId) {
+    save(eventId) {
       if (seen.has(eventId)) {
         return
       }
@@ -187,33 +125,33 @@ export function createMemoryEventStore(maxEvents = 1000): WebhookEventStore {
   }
 }
 
-function parseBody(request: WebhookRequest): { ok: true; value: unknown } | { ok: false; status: number; error: string } {
-  if (request.body !== undefined) {
-    if (isRawBody(request.body)) {
-      return parseRawBody(request.body)
-    }
+const safeHeaders = {
+  'cache-control': 'no-store',
+  'x-content-type-options': 'nosniff'
+}
 
-    if (byteLength(JSON.stringify(request.body)) > MAX_WEBHOOK_BODY_BYTES) {
-      return { ok: false, status: 413, error: 'webhook payload is too large' }
-    }
-    return { ok: true, value: request.body }
-  }
+function json(status: number, body: unknown): Response {
+  return Response.json(body, {
+    status,
+    headers: safeHeaders
+  })
+}
 
-  const raw = request.rawBody
-  if (raw === undefined || byteLength(raw) === 0) {
+async function readJson(
+  request: Request
+): Promise<{ ok: true; value: unknown } | { ok: false; status: number; error: string }> {
+  const body = new Uint8Array(await request.arrayBuffer())
+
+  if (body.byteLength === 0) {
     return { ok: false, status: 400, error: 'webhook payload is required' }
   }
 
-  return parseRawBody(raw)
-}
-
-function parseRawBody(raw: RawWebhookBody): { ok: true; value: unknown } | { ok: false; status: number; error: string } {
-  if (byteLength(raw) > MAX_WEBHOOK_BODY_BYTES) {
+  if (body.byteLength > MAX_WEBHOOK_BODY_BYTES) {
     return { ok: false, status: 413, error: 'webhook payload is too large' }
   }
 
   try {
-    return { ok: true, value: JSON.parse(bodyToText(raw)) }
+    return { ok: true, value: JSON.parse(decoder.decode(body)) }
   } catch {
     return { ok: false, status: 400, error: 'invalid JSON payload' }
   }
@@ -250,34 +188,21 @@ function parseWebhookEvent(value: unknown): { ok: true; event: WebhookEvent } | 
   return { ok: true, event: WebhookEventFromJSON(value) }
 }
 
-function readHeader(headers: HeaderMap, name: string): string | undefined {
-  if (typeof (headers as { get?: unknown }).get === 'function') {
-    return (headers as Headers).get(name) ?? undefined
-  }
-
-  const plainHeaders = headers as Record<string, string | string[] | undefined>
-  const wanted = name.toLowerCase()
-  const key = Object.keys(plainHeaders).find((candidate) => candidate.toLowerCase() === wanted)
-  const value = key ? plainHeaders[key] : undefined
-  return Array.isArray(value) ? value[0] : value
+function isCloudEventsJson(contentType: string | null): boolean {
+  return contentType?.toLowerCase().split(';', 1)[0]?.trim() === 'application/cloudevents+json'
 }
 
-function hasCloudEventsJsonContentType(headers: HeaderMap): boolean {
-  const contentType = readHeader(headers, 'content-type')?.toLowerCase() ?? ''
-  return contentType.split(';', 1)[0]?.trim() === 'application/cloudevents+json'
-}
-
-async function hasValidWebhookKey(provided: string | undefined, expected: string | undefined): Promise<boolean> {
+async function hasValidWebhookKey(provided: string | null, expected: string | undefined): Promise<boolean> {
   const expectedKey = expected?.trim()
   if (!expectedKey) {
     return true
   }
 
   const providedKey = provided?.trim()
-  return providedKey ? timingSafeStringEqual(providedKey, expectedKey) : false
+  return providedKey ? timingSafeEqual(providedKey, expectedKey) : false
 }
 
-async function timingSafeStringEqual(left: string, right: string): Promise<boolean> {
+async function timingSafeEqual(left: string, right: string): Promise<boolean> {
   const [leftHash, rightHash] = await Promise.all([sha256(left), sha256(right)])
   let diff = 0
 
@@ -295,18 +220,6 @@ async function sha256(value: string): Promise<Uint8Array> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isRawBody(value: unknown): value is RawWebhookBody {
-  return typeof value === 'string' || value instanceof ArrayBuffer || value instanceof Uint8Array
-}
-
-function byteLength(value: RawWebhookBody | string): number {
-  return typeof value === 'string' ? encoder.encode(value).byteLength : value.byteLength
-}
-
-function bodyToText(value: RawWebhookBody): string {
-  return typeof value === 'string' ? value : decoder.decode(value)
 }
 
 function runtimeEnv(): WebhookEnv {

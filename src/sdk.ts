@@ -8,6 +8,7 @@ export async function loadAttachedDocument(event: WebhookEvent, apiKey = process
     return undefined
   }
 
+  // Task events already include the task. Use the SDK when you need related data.
   const one = new DocumentsApi(new Configuration({ accessToken: apiKey }))
   const { documents } = await one.listDocuments({
     workspaceId: 'current',
