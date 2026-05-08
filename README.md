@@ -10,7 +10,7 @@ A small Vercel Function that receives One Horizon app webhooks. It uses the One 
 - `public/index.html`: the root deployment status page
 - `src/webhook.ts`: key check, CloudEvents JSON parsing, SDK event typing, idempotency
 - `sample-payloads/`: example One Horizon events
-- `src/sdk.ts`: optional API calls after receiving an event
+- `src/sdk.ts`: optional follow-up call that loads the first document attached to the task
 
 Vercel rewrites `/webhook` to `api/webhook.ts`. The function accepts `HEAD`, `GET`, and CloudEvents JSON `POST`.
 
@@ -35,7 +35,7 @@ npm i @onehorizon/sdk-js@latest
 
 Webhook event and payload types come from `@onehorizon/sdk-js`. Resource payloads are flat: read task events from `event.data.task`, comment events from `event.data.comment`, and bulk task IDs from `event.data.resource.taskIds`.
 
-`ONE_API_KEY` is not needed for the deploy button. Add it later only if you call the One Horizon SDK from your handler.
+`ONE_API_KEY` is not needed for the deploy button. Add it later only if you call the One Horizon SDK from your handler, such as loading an attached document from `src/sdk.ts`.
 
 ## Run it locally
 
