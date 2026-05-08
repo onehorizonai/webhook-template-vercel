@@ -157,6 +157,13 @@
         font-weight: 650;
       }
 
+      .endpoint-url,
+      .inline-url {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+
       .pill.ok {
         border-color: rgba(22, 163, 74, 0.18);
         background: var(--ok-soft);
@@ -368,13 +375,13 @@
           <p class="eyebrow">Webhook receiver</p>
           <h1>Ready for One Horizon events.</h1>
           <p class="lede">
-            This deployment is online. Use <code>/webhook</code> as the endpoint URL in One Horizon.
+            This deployment is online. Copy the endpoint below into One Horizon.
             The endpoint is protected, so a browser visit can return <code>401</code>.
           </p>
 
-          <div class="endpoint" aria-label="Endpoint status">
+          <div class="endpoint" aria-label="Webhook endpoint">
             <span class="pill ok">Root page live</span>
-            <span class="pill">POST /webhook</span>
+            <span class="pill endpoint-url">POST <span data-webhook-url>/webhook</span></span>
           </div>
 
           <div class="steps" aria-label="Setup steps">
@@ -388,7 +395,7 @@
             </div>
             <div class="step">
               <strong>3. Send events</strong>
-              <span>Subscribe to events and point them at <code>/webhook</code>.</span>
+              <span>Subscribe to events and paste the endpoint above.</span>
             </div>
           </div>
         </div>
@@ -398,7 +405,7 @@
             <div class="lights" aria-hidden="true"><span></span><span></span><span></span></div>
             <span>CloudEvents JSON</span>
           </div>
-          <pre><span class="token">POST</span> /webhook
+          <pre><span class="token">POST</span> <span data-webhook-url>/webhook</span>
 <span class="token">content-type</span>: <span class="value">application/cloudevents+json</span>
 <span class="token">x-one-webhook-key</span>: <span class="value">your_webhook_key</span>
 <span class="token">x-one-event-type</span>: <span class="value">task.created</span>
@@ -410,9 +417,16 @@
       </section>
 
       <footer class="footer">
-        <span>Use this page to confirm the deployment. Use <code>/webhook</code> for One Horizon.</span>
+        <span>Webhook endpoint: <code class="inline-url" data-webhook-url>/webhook</code></span>
         <a href="https://onehorizon.ai/docs/integrations/webhooks">Webhook docs</a>
       </footer>
     </main>
+    <script>
+      const webhookUrl = new URL('/webhook', window.location.href).href
+
+      for (const element of document.querySelectorAll('[data-webhook-url]')) {
+        element.textContent = webhookUrl
+      }
+    </script>
   </body>
 </html>
