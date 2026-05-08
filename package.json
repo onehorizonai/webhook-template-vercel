@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@onehorizon/sdk-js": "^2.2.0"
+    "@onehorizon/sdk-js": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

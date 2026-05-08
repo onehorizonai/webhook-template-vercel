@@ -17,13 +17,11 @@ const payload = WebhookEventToJSON({
     resource: { type: 'task', id: 'tsk_123', workspaceId: 'w_123' },
     actor: { type: 'user', id: 'usr_123' },
     task: {
-      task: {
-        taskId: 'tsk_123',
-        workspaceId: 'w_123',
-        title: 'Review launch checklist',
-        status: 'planned',
-        visibility: 'team'
-      }
+      taskId: 'tsk_123',
+      workspaceId: 'w_123',
+      title: 'Review launch checklist',
+      status: 'planned',
+      visibility: 'team'
     }
   }
 } satisfies WebhookEvent)
@@ -37,6 +35,11 @@ const log = {
 const cloudEventsHeaders = { 'content-type': 'application/cloudevents+json; charset=utf-8' }
 
 describe('handleWebhook', () => {
+  it('uses the flattened One Horizon webhook payload shape', () => {
+    expect(payload.data.task).toMatchObject({ taskId: 'tsk_123' })
+    expect(payload.data.task?.task).toBeUndefined()
+  })
+
   it('accepts HEAD verification requests', async () => {
     const response = await handleWebhook({
       method: 'HEAD',

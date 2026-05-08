@@ -36,10 +36,10 @@
   dependencies:
     "@tybys/wasm-util" "^0.10.1"
 
-"@onehorizon/sdk-js@^2.2.0":
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/@onehorizon/sdk-js/-/sdk-js-2.2.0.tgz#57c32c459f4259ab114c22fd9d7360af1649279e"
-  integrity sha512-zoi8lXdAPUHBK4ztNTzJrgHALj9boFriB+0zB4YZKUdY32gFiKpXUOkc/J6qLoDsTpG8N4DO+Cg6cXtosX4hWQ==
+"@onehorizon/sdk-js@^2.0.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@onehorizon/sdk-js/-/sdk-js-2.3.0.tgz#9c5a0ac7558c65f84b98f99775806183a9dcb991"
+  integrity sha512-37K9M10KzuQQHc/j1RPaizRm2UkhUqPt6WY0HK77pFjuDR4ve7onlFweFub7T79iK/KNcnICFSPAdKGsuWNVqA==
 
 "@oxc-project/types@=0.128.0":
   version "0.128.0"

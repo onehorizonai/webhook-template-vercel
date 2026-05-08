@@ -30,10 +30,10 @@ Use the root URL, `/`, to check that the deployment is live. Use `/webhook` only
 - [JavaScript SDK](https://www.npmjs.com/package/@onehorizon/sdk-js)
 
 ```bash
-npm i @onehorizon/sdk-js@latest
+npm i @onehorizon/sdk-js@^2
 ```
 
-Webhook event and payload types come from `@onehorizon/sdk-js`.
+Webhook event and payload types come from `@onehorizon/sdk-js`. Resource payloads are flat: read task events from `event.data.task`, comment events from `event.data.comment`, and bulk task IDs from `event.data.resource.taskIds`.
 
 `ONE_API_KEY` is not needed for the deploy button. Add it later only if you call the One Horizon SDK from your handler.
 
