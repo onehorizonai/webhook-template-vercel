@@ -1,5 +1,5 @@
 import { WebhookEventToJSON } from '@onehorizon/sdk-js'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WebhookEvent } from '@onehorizon/sdk-js'
 import vercelWebhook from '../api/webhook.js'
 import { createMemoryEventStore, handleWebhookRequest, type WebhookOptions } from '../src/webhook.js'
@@ -32,6 +32,10 @@ const log = {
   warn: vi.fn(),
   error: vi.fn()
 }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 interface SendWebhookOptions {
   method?: string
@@ -104,6 +108,8 @@ describe('handleWebhookRequest', () => {
       id: 'evt_header',
       type: 'task.created'
     })
+    expect(log.info).toHaveBeenCalledWith(expect.stringContaining('"resource": {'))
+    expect(log.info).toHaveBeenCalledWith(expect.stringContaining('"actor": {'))
   })
 
   it('accepts string request bodies', async () => {

@@ -68,7 +68,7 @@ export async function handleWebhookRequest(request: Request, options: WebhookOpt
   const type = request.headers.get('x-one-event-type') || event.type
 
   // Useful while testing. Remove this before production because payloads can contain workspace data.
-  log.info('Received One Horizon webhook payload', { event })
+  log.info(`Received One Horizon webhook payload:\n${JSON.stringify(event, null, 2)}`)
 
   try {
     if (await eventStore.has(id)) {
